@@ -127,7 +127,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    */
   
   vector<LandmarkObs> predictions;
-  
+  double weight_sum = 0;
+  double gauss_norm = 1 / (2 * M_PI * std_landmark[0] * std_landmark[1]);
   
   for(int i = 0; i < num_particles; i++ ){
     for(unsigned int j = 0; j < map_landmarks.landmark_list.size(); j++) {
@@ -152,7 +153,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     particles[i].weight = 1.0;
     for(unsigned int j = 0; j < trans_obs.size(); j++){
       double pred_x, pred_y;
-      double gauss_norm, exponent, weight;
+      double exponent, weight;
       for(unsigned int k = 0; k < predictions.size(); k++){
         if(predictions[k].id == trans_obs[j].id){
           pred_x = predictions[k].x;
@@ -161,13 +162,19 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         }
     }
       
-      gauss_norm = 1 / (2 * M_PI * std_landmark[0] * std_landmark[1]);
       exponent = (pow(trans_obs[j].x - pred_x, 2) / (2 * pow(std_landmark[0], 2)))
                + (pow(trans_obs[j].y - pred_y, 2) / (2 * pow(std_landmark[1], 2)));
       weight = gauss_norm * exp(-exponent);
       particles[i].weight *= weight;
   }
-}
+      weights.push_back(particles[i].weight);
+      weight_sum += weights[i];
+  }
+  if(fabs(weight_sum) > 0.0){
+    for(unsigned int i=0;i<weights.size();i++){
+      weights[i] = weights[i] / weight_sum;
+    }
+  }
 }
 
 void ParticleFilter::resample() {
@@ -177,10 +184,6 @@ void ParticleFilter::resample() {
    * NOTE: You may find std::discrete_distribution helpful here.
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
-  vector<double> weights;
-  for(int i=0;i<num_particles;i++){
-    weights.push_back(particles[i].weight);
-  }
   double max_weight = *max_element(weights.begin(), weights.end());
   
   double beta = 0.0;
